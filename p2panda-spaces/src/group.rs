@@ -18,7 +18,7 @@ use thiserror::Error;
 use tracing::debug;
 
 use crate::auth::message::AuthMessage;
-use crate::event::{Event, group_message_to_auth_event};
+use crate::event::{Event, to_groups_event};
 use crate::forge::Forge;
 use crate::identity::IdentityError;
 use crate::manager::{Manager, StoreError};
@@ -164,9 +164,10 @@ where
             return Ok(None);
         }
 
+        let previous_parents = groups_y.inner.parents(auth_message.group_id());
         groups_y =
             AuthGroup::<C>::process(groups_y, auth_message).map_err(GroupError::AuthGroup)?;
-        let events = group_message_to_auth_event(&groups_y, auth_message);
+        let events = to_groups_event(&groups_y, auth_message, &previous_parents);
         Ok(Some((groups_y, events)))
     }
 
@@ -194,9 +195,10 @@ where
         };
 
         let auth_message = SpacesMessage::auth(&message);
+        let previous_parents = y.inner.parents(auth_message.group_id());
         let y = AuthGroup::<C>::process(y, &auth_message).map_err(GroupError::AuthGroup)?;
 
-        let event = group_message_to_auth_event(&y, &auth_message);
+        let event = to_groups_event(&y, &auth_message, &previous_parents);
 
         Ok((y, message, event))
     }
